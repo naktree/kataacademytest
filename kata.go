@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 func calculate(operand1, operand2, operator string) (interface{}, error) {
@@ -41,25 +42,34 @@ func calculate(operand1, operand2, operator string) (interface{}, error) {
 	}
 
 	if isRomanNumeral(operand1) && isRomanNumeral(operand2) {
-		return convertToRoman(result), nil
+		romanResult, err := convertToRoman(result)
+		if err != nil {
+			return nil, err
+		}
+		return romanResult, nil
 	}
 
 	return result, nil
 }
 
 func convertToNumber(operand string) (int, error) {
-	num, err := strconv.Atoi(operand)
-	if err == nil {
-		return num, nil
+	for _, char := range operand {
+		if !unicode.IsDigit(char) && char != 'I' && char != 'V' && char != 'X' {
+			return 0, fmt.Errorf("неверный формат цифры: %s", operand)
+		}
 	}
 
-	num, err = convertRomanToArabic(operand)
+	if isRomanNumeral(operand) {
+		return convertRomanToArabic(operand)
+	}
+
+	num, err := strconv.Atoi(operand)
 	if err != nil {
 		return 0, fmt.Errorf("неверный формат цифры: %s", operand)
 	}
 
-	if num > 10 {
-		return 0, fmt.Errorf("операнд больше 10")
+	if num < 1 || num > 10 {
+		return 0, fmt.Errorf("операнд должен быть в пределах от 1 до 10")
 	}
 
 	return num, nil
@@ -101,9 +111,9 @@ func convertRomanToArabic(roman string) (int, error) {
 	return result, nil
 }
 
-func convertToRoman(num int) string {
+func convertToRoman(num int) (string, error) {
 	if num <= 0 || num > 3999 {
-		return ""
+		return "", fmt.Errorf("в римской числовой системе нет отрицательных чисел или чисел больше 3999")
 	}
 
 	romanNumerals := []struct {
@@ -134,7 +144,7 @@ func convertToRoman(num int) string {
 		}
 	}
 
-	return result.String()
+	return result.String(), nil
 }
 
 func isRomanNumeral(s string) bool {
@@ -142,20 +152,8 @@ func isRomanNumeral(s string) bool {
 		return false
 	}
 
-	romanNumerals := map[byte]int{
-		'I': 1,
-		'V': 5,
-		'X': 10,
-		'L': 50,
-		'C': 100,
-		'D': 500,
-		'M': 1000,
-	}
-
-	for i := 0; i < len(s); i++ {
-		if value, ok := romanNumerals[s[i]]; !ok {
-			return false
-		} else if i > 0 && romanNumerals[s[i-1]] < value {
+	for _, char := range s {
+		if char != 'I' && char != 'V' && char != 'X' {
 			return false
 		}
 	}
@@ -172,7 +170,13 @@ func parseInput(input string) ([]string, string, error) {
 		return nil, "", fmt.Errorf("неверное количество элементов в выражении")
 	}
 
-	operands = append(operands, parts[0], parts[2])
+	operand1, operand2 := parts[0], parts[2]
+
+	if (isRomanNumeral(operand1) && !isRomanNumeral(operand2)) || (!isRomanNumeral(operand1) && isRomanNumeral(operand2)) {
+		return nil, "", fmt.Errorf("используйте либо римские, либо арабские числа в одном выражении")
+	}
+
+	operands = append(operands, operand1, operand2)
 	operator = parts[1]
 
 	return operands, operator, nil
