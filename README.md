@@ -1,1 +1,1 @@
-# kataacademytest
+Тестовое задание для Kata Academy, калькулятор
